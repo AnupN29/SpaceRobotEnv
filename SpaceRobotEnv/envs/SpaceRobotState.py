@@ -12,10 +12,9 @@ from gym_robotics.utils import rotations
 
 import mujoco_py
 
-PATH = os.getcwd()
-MODEL_XML_PATH = os.path.join(
-    PATH, "SpaceRobotEnv", "SpaceRobotEnv", "assets", "spacerobot", "spacerobot_state.xml"
-)
+PATH = os.path.dirname(os.path.abspath(__file__))
+MODEL_XML_PATH = PATH + "/../assets/spacerobot/spacerobot_state.xml"
+
 DEFAULT_SIZE = 500
 
 
