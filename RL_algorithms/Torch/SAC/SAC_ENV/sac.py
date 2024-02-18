@@ -102,7 +102,7 @@ def sac( env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     act_limit = env.action_space.high[0]
 
     # Create actor-critic module and target networks
-    actor_critic_agent = actor_critic(env.observation_space['observation'], env.action_space, **ac_kwargs)
+    actor_critic_agent = actor_critic(env.observation_space['observation'], env.action_space, **ac_kwargs).to(device)
     actor_critic_agent_target = deepcopy(actor_critic_agent)
 
     # Freeze target networks with respect to optimizers (only update via polyak averaging)
