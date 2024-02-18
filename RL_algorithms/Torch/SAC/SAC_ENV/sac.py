@@ -103,7 +103,7 @@ def sac( env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
     # Create actor-critic module and target networks
     actor_critic_agent = actor_critic(env.observation_space['observation'], env.action_space, **ac_kwargs).to(device)
-    actor_critic_agent_target = deepcopy(actor_critic_agent)
+    actor_critic_agent_target = deepcopy(actor_critic_agent).to(device)
 
     # Freeze target networks with respect to optimizers (only update via polyak averaging)
     for p in actor_critic_agent_target.parameters():
@@ -173,7 +173,12 @@ def sac( env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     pi_optimizer = Adam(actor_critic_agent.pi.parameters(), lr=lr)
     q_optimizer = Adam(q_params, lr=lr)
 
-    # Set up model saving
+    for optimizer in [pi_optimizer, q_optimizer]:
+        for param_group in optimizer.param_groups:
+            for param in param_group['params']:
+                param.data = param.data.to(device)
+
+
    
 
     def update(data, n_update_step):
@@ -239,6 +244,7 @@ def sac( env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     start_time = time.time()
     observation_i, ep_ret, ep_len = env.reset(), 0, 0
     observation_i = observation_i['observation']
+    
 
     # Main loop: collect experience in env and update/log each epoch
     for t in range(total_steps):
