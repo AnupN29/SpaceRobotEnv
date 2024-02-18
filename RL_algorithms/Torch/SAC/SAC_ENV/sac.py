@@ -84,7 +84,9 @@ def sac( env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         save_freq (int): How often (in terms of gap between epochs) to save
             the current policy and value function.
     """
-
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("DEVICE : ", device)
+    
     n_update_step = 0
     time_step = 0
     n_played_games = 0 
