@@ -13,7 +13,7 @@ from RL_algorithms.Torch.SAC.SAC_ENV.memory import ReplayBuffer
 import itertools
 import SpaceRobotEnv
 from torch.utils.tensorboard import SummaryWriter
-def sac( env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0, 
+def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0, 
         steps_per_epoch=4000, epochs=100, replay_size=int(1e6), gamma=0.99, 
         polyak=0.995, lr=1e-3, alpha=0.2, batch_size=100, start_steps=10000, 
         update_after=1000, update_every=50, num_test_episodes=10, max_ep_len=1000, 
@@ -105,6 +105,10 @@ def sac( env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
     # Create actor-critic module and target networks
     actor_critic_agent = actor_critic(env.observation_space['observation'], env.action_space, **ac_kwargs)
+    if(model_path != None):
+        actor_critic_agent.load_state_dict(torch.load(model_path))
+        print(f"MODEL LOADED from {model_path}")
+        actor_critic_agent.train()
     actor_critic_agent_target = deepcopy(actor_critic_agent)
 
     # Freeze target networks with respect to optimizers (only update via polyak averaging)
