@@ -1,11 +1,11 @@
-import core
+from RL_algorithms.Torch.SAC.SAC_ENV import core
 import gym
 import torch
 from copy import deepcopy
 from torch.optim import Adam
 import numpy as np
 import time
-from memory import ReplayBuffer
+from RL_algorithms.Torch.SAC.SAC_ENV.memory import ReplayBuffer
 import itertools
 import SpaceRobotEnv
 from torch.utils.tensorboard import SummaryWriter
@@ -305,8 +305,8 @@ if __name__ == '__main__':
     parser.add_argument('--l', type=int, default=2)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--seed', '-s', type=int, default=0)
-    parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--exp_name', type=str, default='sac_2')
+    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--exp_name', type=str, default='sac_20')
     args = parser.parse_args()
 
     # from spinup.utils.run_utils import setup_logger_kwargs
@@ -314,7 +314,7 @@ if __name__ == '__main__':
     logger_kwargs = None
 
     torch.set_num_threads(torch.get_num_threads())
-    writer = SummaryWriter("RL_algorithms/Torch/SAC/spinup_Sac/logs")
+    writer = SummaryWriter("logs")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
