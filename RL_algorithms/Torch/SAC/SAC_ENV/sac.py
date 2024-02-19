@@ -1,9 +1,6 @@
 from RL_algorithms.Torch.SAC.SAC_ENV import core
 import gym
 import torch
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.set_default_device(device)
-print("DEVICE : ", device)
 
 from copy import deepcopy
 from torch.optim import Adam
@@ -103,13 +100,17 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
     # Action limit for clamping: critically, assumes all dimensions share the same bound!
     act_limit = env.action_space.high[0]
 
+    # Determine device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"DEVICE : {device} \n")
+
     # Create actor-critic module and target networks
-    actor_critic_agent = actor_critic(env.observation_space['observation'], env.action_space, **ac_kwargs)
-    if(model_path != None):
+    actor_critic_agent = actor_critic(env.observation_space['observation'], env.action_space, **ac_kwargs).to(device)
+    if model_path:
         actor_critic_agent.load_state_dict(torch.load(model_path))
         print(f"MODEL LOADED from {model_path}")
         actor_critic_agent.train()
-    actor_critic_agent_target = deepcopy(actor_critic_agent)
+    actor_critic_agent_target = deepcopy(actor_critic_agent).to(device)
 
     # Freeze target networks with respect to optimizers (only update via polyak averaging)
     for p in actor_critic_agent_target.parameters():

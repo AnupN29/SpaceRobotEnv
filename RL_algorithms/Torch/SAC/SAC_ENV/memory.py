@@ -1,6 +1,7 @@
 import numpy as np
 from RL_algorithms.Torch.SAC.SAC_ENV import core
 import torch
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ReplayBuffer:
     """
@@ -24,11 +25,11 @@ class ReplayBuffer:
         self.ptr = (self.ptr+1) % self.max_size
         self.size = min(self.size+1, self.max_size)
 
-    def sample_batch(self, batch_size=32):
+    def sample_batch(self, batch_size=32, device=device):
         idxs = np.random.randint(0, self.size, size=batch_size)
         batch = dict(obs=self.obs_buf[idxs],
                      obs2=self.obs2_buf[idxs],
                      act=self.act_buf[idxs],
                      rew=self.rew_buf[idxs],
                      done=self.done_buf[idxs])
-        return {k: torch.as_tensor(v, dtype=torch.float32) for k,v in batch.items()}
+        return {k: torch.as_tensor(v, dtype=torch.float32, device=device) for k,v in batch.items()}
