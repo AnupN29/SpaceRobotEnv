@@ -30,7 +30,7 @@ class RobotEnv(gym_robotics.GoalEnv):
         self._viewers = {}
         self.metadata = {
             "render.modes": ["human", "rgb_array"],
-            "video.frames_per_second": int(np.round(1.0 / self.dt)),
+            "video.frames_per_second": int(np.round(0.5*1.0 / self.dt)),
         }
 
         # seed
@@ -40,7 +40,7 @@ class RobotEnv(gym_robotics.GoalEnv):
         self._env_setup(initial_qpos=initial_qpos)
         self.initial_state = copy.deepcopy(self.sim.get_state())
         self.goal = self._sample_goal()
-
+        self.current_time = 0
         # set action_space and observation_space
         obs = self._get_obs()
         self._set_action_space()
@@ -87,6 +87,8 @@ class RobotEnv(gym_robotics.GoalEnv):
         self._step_callback()
         obs = self._get_obs()
         done = False
+        self.goal = self.update_target_location(self.current_time)
+        self.current_time += 1
         info = {
             "is_success": self._is_success(obs["achieved_goal"], self.goal),
             "act": action,
@@ -96,6 +98,30 @@ class RobotEnv(gym_robotics.GoalEnv):
             obs["achieved_goal"], self.goal, action, old_action, info
         )
         return obs, reward, done,False, info
+
+    def update_target_location(self, t):
+        # Define the parameters for periodic or sinusoidal movements
+        amplitude = 0.1  
+        frequency = 0.5  
+        # phase_shift = 0  
+
+        # Compute the updated target position using a periodic or sinusoidal function
+        x_offset = amplitude * np.sin(2 * np.pi * frequency * t )
+        y_offset = amplitude * np.cos(2 * np.pi * frequency * t )
+        # z_offset = 0  # Keep z-axis position constant
+
+        # Compute the updated target position relative to its initial location
+        updated_goal = self.goal
+        updated_goal[0] += x_offset
+        updated_goal[1] += y_offset
+        # updated_goal[2] += z_offset
+
+        # Update the target position in the simulation model
+        site_id = self.sim.model.site_name2id("target0")
+        self.sim.model.site_pos[site_id] = updated_goal
+        self.sim.forward()
+
+        return updated_goal.copy()
 
     def reset(self):
         """Attempt to reset the simulator. Since we randomize initial conditions, it

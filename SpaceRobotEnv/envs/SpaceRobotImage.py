@@ -13,10 +13,9 @@ from gym_robotics.utils import rotations
 import mujoco_py
 
 
-PATH = os.getcwd()
-MODEL_XML_PATH = os.path.join(
-    PATH, "SpaceRobotEnv", "assets", "spacerobot", "spacerobot_image.xml"
-)
+PATH = os.path.dirname(os.path.abspath(__file__))
+MODEL_XML_PATH = PATH + "/../assets/spacerobot/spacerobot_image.xml"
+
 DEFAULT_SIZE = 500
 
 
@@ -109,7 +108,7 @@ class RobotEnv(gym_robotics.GoalEnv):
         g = self.goal
         ag = obs["achieved_goal"]
         reward = self.compute_reward(ag, g, info)
-        return obs, reward, done, info
+        return obs, reward, done,False, info
 
     def reset(self):
         """Attempt to reset the simulator. Since we randomize initial conditions, it
