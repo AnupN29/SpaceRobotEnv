@@ -16,7 +16,11 @@ def goal_distance(goal_a, goal_b):
 
 def act(model, obs, deterministic=False):
     a, _ = model(obs, deterministic, False)
-    return a.detach().numpy()
+    try :
+        return a.detach().numpy()
+    except:
+        return a.cpu().numpy()
+
 
 def update(data, n_update_step, criterion, optimizer):
     
