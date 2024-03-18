@@ -57,7 +57,7 @@ class CNNActor(nn.Module):
             nn.ReLU(),
             nn.Linear(256, 64),
             nn.ReLU()
-        )
+        ).to(device)
         
         self.net = mlp([64] + list(hidden_sizes), activation, activation).to(device)
         self.mu_layer = nn.Linear(hidden_sizes[-1], act_dim).to(device)
