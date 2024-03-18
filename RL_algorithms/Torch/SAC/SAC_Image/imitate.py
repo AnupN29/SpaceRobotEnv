@@ -46,7 +46,7 @@ def train(writer, epochs, steps_per_epoch, env, expert_model, cnn_model, criteri
             
             
 
-            actions = act(model=cnn_model,obs=torch.tensor(observation["rawimage"].reshape(1, 3, 64, 64), dtype=torch.float32))
+            actions = act(model=cnn_model,obs=torch.tensor(observation["rawimage"].reshape(1, 3, 64, 64), dtype=torch.float32, device=device))
             actions = actions.reshape(6,) 
             expert_actions = expert_model.act(obs=torch.tensor(observation["observation"], dtype=torch.float32)) 
 
