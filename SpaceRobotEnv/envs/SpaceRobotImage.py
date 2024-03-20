@@ -157,9 +157,12 @@ class RobotEnv(gym_robotics.GoalEnv):
                 self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, device_id=-1)
                 self._viewer_setup()
                 # self.viewer.cam.trackbodyid = 0
-                # original version: cam_pos = np.array([0.7, 0.5, 5, 0.5, 0, -60])
+                # original version: 
+                # cam_pos = np.array([0.7, 0.5, 5, 0.5, 0, -60])
+                
                 # latest modification
-                cam_pos = np.array([1, 0.5, 5, 0.3, 0, -90])
+                # cam_pos = np.array([1, 0.5, 5, 0.3, 0, -90])
+                cam_pos = np.array([1, 0.5, 5, 3, 0, -90])
                 for i in range(3):
                     self.viewer.cam.lookat[i] = cam_pos[i]
                 self.viewer.cam.distance = cam_pos[3]
@@ -295,7 +298,7 @@ class SpacerobotEnv(RobotEnv):
         image = (2.0 / 255.0) * image_raw - 1.0
 
         # get high-resolution image
-        width, height = (640, 640)
+        width, height = (680, 680)
         clearimage, _ = self.render(mode="rgb_array", width=width, height=height)
 
         base_pos = self.sim.data.qpos[:3].copy()

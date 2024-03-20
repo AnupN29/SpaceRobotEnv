@@ -1,7 +1,7 @@
 from RL_algorithms.Torch.SAC.SAC_Image import core
 import gym
 import torch
-
+from tqdm import tqdm
 from copy import deepcopy
 from torch.optim import Adam
 import numpy as np
@@ -11,7 +11,7 @@ import itertools
 import SpaceRobotEnv
 from torch.utils.tensorboard import SummaryWriter
 def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=dict(), seed=0, 
-        steps_per_epoch=4000, epochs=100, replay_size=int(1e5), gamma=0.99, 
+        steps_per_epoch=4000, epochs=100, replay_size=int(1e3), gamma=0.99, 
         polyak=0.995, lr=1e-3, alpha=0.2, batch_size=100, start_steps=10000, 
         update_after=1000, update_every=50, num_test_episodes=3, max_ep_len=1000, 
         logger_kwargs=dict(), save_freq=1, writer=None):
@@ -52,7 +52,7 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
     q_params = itertools.chain(actor_critic_agent.q1.parameters(), actor_critic_agent.q2.parameters())
 
     # Experience buffer
-    replay_buffer = ReplayBuffer(obs_dim = (3, 64, 64),
+    replay_buffer = ReplayBuffer(obs_dim = (3, 680, 680),
                                  act_dim = action_dim, 
                                  size=replay_size)
 
@@ -162,11 +162,11 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
         print("testing model")
         for j in range(num_test_episodes):
             o, d, ep_ret, ep_len = test_env.reset(), False, 0, 0
-            o = o["rawimage"].reshape(1, 3, 64, 64)
+            o = o["image"].reshape(1, 3, 680, 680)
             while not(d or (ep_len == max_ep_len)):
                 # Take deterministic actions at test time 
                 o, r, d, _, _ = test_env.step(get_action(o, True).reshape(6,))
-                o = o["rawimage"].reshape(1, 3, 64, 64)
+                o = o["image"].reshape(1, 3, 680, 680)
                 ep_ret += r
                 ep_len += 1
             # logger.store(TestEpRet=ep_ret, TestEpLen=ep_len)
@@ -177,10 +177,10 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
     total_steps = steps_per_epoch * epochs
     start_time = time.time()
     observation_i, ep_ret, ep_len = env.reset(), 0, 0
-    observation_i = observation_i["rawimage"].reshape(3, 64, 64)
+    observation_i = observation_i["image"].reshape(3, 680, 680)
 
     # Main loop: collect experience in env and update/log each epoch
-    for t in range(total_steps):
+    for t in tqdm(range(total_steps)):
         
         # Until start_steps have elapsed, randomly sample actions
         # from a uniform distribution for better exploration. Afterwards, 
@@ -192,7 +192,7 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
 
         # Step the env
         observation_2, reward, done, _, _ = env.step(action)
-        observation_2 = observation_2["rawimage"].reshape(3, 64, 64)
+        observation_2 = observation_2["image"].reshape(3, 680, 680)
         ep_ret += reward
         ep_len += 1
 
@@ -217,7 +217,7 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
             print( 'score %.1f', ep_ret, 'avg_score %.1f' ,avg_score,'num_games', n_played_games, )
             n_played_games += 1
             observation_i, ep_ret, ep_len = env.reset(), 0, 0
-            observation_i = observation_i["rawimage"].reshape(3, 64, 64)
+            observation_i = observation_i["image"].reshape(3, 680, 680)
 
         # Update handling
         if t >= update_after and t % update_every == 0:

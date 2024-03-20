@@ -3,7 +3,7 @@ from RL_algorithms.Torch.SAC.SAC_ENV import core
 import gym
 import torch
 import torch.nn as nn
-
+from tqdm import tqdm
 
 from torch.optim import Adam
 import numpy as np
@@ -16,15 +16,22 @@ def goal_distance(goal_a, goal_b):
 
 def act(model, obs, deterministic=False):
     a, _ = model(obs, deterministic, False)
-    try :
-        return a.detach().numpy()
-    except:
-        return a.cpu().numpy()
+    return a
+    # try :
+    #     return a.detach().numpy()
+    # except:
+    #     return a.cpu().numpy()
 
 
-def update(data, n_update_step, criterion, optimizer):
+def update(data, n_update_step, cnn_model,criterion, optimizer):
+    torch.autograd.set_detect_anomaly(True)
+
     
-    actions, expert_actions = data['action'], data['expert_action']
+    obs, expert_actions = data['obs'], data['expert_act']
+
+    actions = act(model=cnn_model,obs=obs)
+    # print(f"Student action : {actions.shape}")
+    # print(f"Expert action : {expert_actions.shape}")
 
     optimizer.zero_grad()
     # Compute loss between CNN actions and expert actions
@@ -41,30 +48,37 @@ def update(data, n_update_step, criterion, optimizer):
 def train(writer, epochs, steps_per_epoch, env, expert_model, cnn_model, criterion, optimizer, replay_buffer, batch_size,device):
     cnn_model.train()
     n_update_step  = 0
-    for ep in range(epochs):
+    for ep in tqdm(range(epochs)):
         writer = SummaryWriter(f"logs/imitate")
 
         observation = env.reset()
 
-        for i in range(steps_per_epoch):
+        for i in range(steps_per_epoch): 
             
             
 
-            actions = act(model=cnn_model,obs=torch.tensor(observation["rawimage"].reshape(1, 3, 64, 64), dtype=torch.float32, device=device))
-            actions = actions.reshape(6,) 
+            # actions = act(model=cnn_model,obs=torch.tensor(observation["rawimage"].reshape(1, 3, 64, 64), dtype=torch.float32, device=device))
+            # actions = actions.reshape(6,)
+            obs=torch.tensor(observation["rawimage"].reshape(3, 64, 64), dtype=torch.float32)
+            # actions.requires_grad_() 
             expert_actions = expert_model.act(obs=torch.tensor(observation["observation"], dtype=torch.float32)) 
+            observation, _, _, _, _ = env.step(expert_actions)
+
+            expert_actions = torch.tensor(expert_actions, dtype=torch.float32)
+            expert_actions = expert_actions.reshape(6,)
 
             # print(f"Student action : {actions.shape}")
             # print(f"Expert action : {expert_actions.shape}")
             
-            observation, _, _, _, _ = env.step(expert_actions)
 
             if ep > 4:
                 batch = replay_buffer.sample_batch(batch_size)
-                update(batch, n_update_step, criterion, optimizer, device)
+                update(batch, n_update_step, cnn_model=cnn_model, criterion=criterion, optimizer=optimizer)
                 n_update_step += 1
+
             
-            replay_buffer.store(actions, expert_actions)
+            
+            replay_buffer.store(obs, expert_actions)
 
             
             # print("Distance/Error :", distance_error)
@@ -72,9 +86,11 @@ def train(writer, epochs, steps_per_epoch, env, expert_model, cnn_model, criteri
             distance_error = goal_distance(observation['achieved_goal'], observation['desired_goal'])
             if(distance_error < 0.05 or i == steps_per_epoch):
                 break
+            
         if ep > 4:
-            torch.save(cnn_model.state_dict(), f"model_epoch_{ep}.pt")
-            test(writer, env, cnn_model, ep)
+            e = ep-4
+            torch.save(cnn_model.state_dict(), f"model_epoch_{e}.pt")
+            test(writer, env, cnn_model, e)
 
 def test(writer, env, cnn_model,n):
     cnn_model.eval()
@@ -100,7 +116,7 @@ def test(writer, env, cnn_model,n):
 
 
 def imitate(CNNmodel_path=None, CNNactor=cnn_core.CNNActor, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0, 
-        steps_per_epoch=400, epochs=100, replay_size=int(1e6), batch_size=128,writer=None):
+        steps_per_epoch=400, epochs=100, replay_size=int(1e5), batch_size=128,writer=None):
     
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -109,6 +125,7 @@ def imitate(CNNmodel_path=None, CNNactor=cnn_core.CNNActor, model_path=None, act
     print(f"Device : {device}")
     env = gym.make('SpaceRobotImage-v0')
     action_dim = env.action_space.shape[0]
+    obs_dim = env.observation_space['rawimage'].shape
 
 
     model_cnn = CNNactor(act_dim=env.action_space.shape[0], activation=nn.ReLU, act_limit=env.action_space.high[0], device=device, **ac_kwargs).to(device)
@@ -130,7 +147,7 @@ def imitate(CNNmodel_path=None, CNNactor=cnn_core.CNNActor, model_path=None, act
     criterion = nn.MSELoss()
     optimizer = Adam(model_cnn.parameters(), lr=0.001)
 
-    replay_buffer = cnn_core.ReplayBuffer(act_dim=action_dim, size=replay_size)
+    replay_buffer = cnn_core.ReplayBuffer(obs_dim=(3, 64, 64),act_dim=action_dim, size=replay_size) 
 
     train(writer, epochs, steps_per_epoch, env, expert_model, model_cnn, criterion, optimizer, replay_buffer, batch_size,device=device)
 
@@ -146,7 +163,7 @@ if __name__ == '__main__':
     parser.add_argument('--l', type=int, default=2)
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--replay_size', type=int, default=int(1e6))
+    parser.add_argument('--replay_size', type=int, default=int(1e5))
     parser.add_argument('--batch_size', type=int, default=128)
     args = parser.parse_args()
 

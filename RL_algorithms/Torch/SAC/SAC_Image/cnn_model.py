@@ -100,19 +100,19 @@ class ReplayBuffer:
     A simple FIFO experience replay buffer for SAC agents.
     """
 
-    def __init__(self, act_dim, size):
-        self.act_buf = np.zeros(core.combined_shape(size, act_dim), dtype=np.float32)
-        self.exp_act_buf = np.zeros(core.combined_shape(size, act_dim), dtype=np.float32)
+    def __init__(self, obs_dim, act_dim, size):
+        self.obs_buf = np.zeros(core.combined_shape(size, obs_dim), dtype=np.float32)
+        self.exp_act_buf = torch.zeros(core.combined_shape(size, act_dim), dtype=torch.float32)
         self.ptr, self.size, self.max_size = 0, 0, size
 
-    def store(self, act, expert_act):
-        self.act_buf[self.ptr] = act
+    def store(self, obs, expert_act):
+        self.obs_buf[self.ptr] = obs
         self.exp_act_buf[self.ptr] = expert_act
         self.ptr = (self.ptr+1) % self.max_size
         self.size = min(self.size+1, self.max_size)
 
     def sample_batch(self, batch_size=32, device=device):
         idxs = np.random.randint(0, self.size, size=batch_size)
-        batch = dict(act=self.act_buf[idxs],
+        batch = dict(obs=self.obs_buf[idxs],
                      expert_act=self.exp_act_buf[idxs])
         return {k: torch.as_tensor(v, dtype=torch.float32, device=device) for k,v in batch.items()}

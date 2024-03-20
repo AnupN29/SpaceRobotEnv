@@ -51,12 +51,12 @@ class CNNActor(nn.Module):
             nn.MaxPool2d(2,2),
 
             nn.Flatten(),
-            nn.Linear(1024, 4096),
+            nn.Linear(1024, 64),
             nn.ReLU(),
-            nn.Linear(4096, 256),
-            nn.ReLU(),
-            nn.Linear(256, 64),
-            nn.ReLU()
+            # nn.Linear(4096, 256),
+            # nn.ReLU(),
+            # nn.Linear(256, 64),
+            # nn.ReLU()
         ).to(device)
         
         self.net = mlp([64] + list(hidden_sizes), activation, activation).to(device)
