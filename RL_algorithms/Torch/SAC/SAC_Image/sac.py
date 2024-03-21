@@ -251,6 +251,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--replay_size', type=int, default=16)
+    parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--exp_name', type=str, default='sac_20')
     args = parser.parse_args()
 
@@ -267,5 +268,5 @@ if __name__ == '__main__':
     sac(lambda : gym.make(args.env), actor_critic=core.CNNActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), 
         gamma=args.gamma, seed=args.seed, epochs=args.epochs,
-        logger_kwargs=logger_kwargs,writer=writer,replay_size=args.replay_size)
+        logger_kwargs=logger_kwargs,writer=writer,replay_size=args.replay_size,batch_size=args.batch_size)
     
