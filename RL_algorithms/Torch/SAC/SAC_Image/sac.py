@@ -12,7 +12,7 @@ import SpaceRobotEnv
 from torch.utils.tensorboard import SummaryWriter
 def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=dict(), seed=0, 
         steps_per_epoch=4000, epochs=100, replay_size=int(1e5), gamma=0.99, 
-        polyak=0.995, lr=1e-3, alpha=0.2, batch_size=32, start_steps=0, 
+        polyak=0.995, lr=1e-3, alpha=0.2, batch_size=16, start_steps=0, 
         update_after=50, update_every=50, num_test_episodes=3, max_ep_len=1000, 
         logger_kwargs=dict(), save_freq=1, writer=None):
     
@@ -250,7 +250,7 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--replay_size', type=int, default=32)
+    parser.add_argument('--replay_size', type=int, default=16)
     parser.add_argument('--exp_name', type=str, default='sac_20')
     args = parser.parse_args()
 
