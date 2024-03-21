@@ -103,6 +103,8 @@ class CNNQFunction(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(2,2),
             nn.Flatten(),
+            nn.Linear(3655808, 28800),
+            nn.ReLU(),
             nn.Linear(28800, 512),
             nn.ReLU(),
             nn.Linear(512, 64),
