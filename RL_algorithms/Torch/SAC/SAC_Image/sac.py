@@ -12,7 +12,7 @@ import SpaceRobotEnv
 from torch.utils.tensorboard import SummaryWriter
 def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=dict(), seed=0, 
         steps_per_epoch=4000, epochs=100, replay_size=int(1e3), gamma=0.99, 
-        polyak=0.995, lr=1e-3, alpha=0.2, batch_size=100, start_steps=10000, 
+        polyak=0.995, lr=1e-3, alpha=0.2, batch_size=100, start_steps=0, 
         update_after=1000, update_every=50, num_test_episodes=3, max_ep_len=1000, 
         logger_kwargs=dict(), save_freq=1, writer=None):
     
@@ -186,7 +186,7 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
         # from a uniform distribution for better exploration. Afterwards, 
         # use the learned policy. 
         if t > start_steps:
-            action = get_action(observation_i)
+            action = get_action(observation_i.reshape(1, 3, 680, 680))
         else:
             action = env.action_space.sample()
 
