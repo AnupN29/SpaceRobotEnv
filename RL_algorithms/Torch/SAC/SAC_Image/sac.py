@@ -188,6 +188,8 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
         if t > start_steps:
             o = torch.tensor(observation_i.reshape(1, 3, 680, 680), device=device)
             action = get_action(o)
+            action = action.reshape(6,)
+
         else:
             action = env.action_space.sample()
 
