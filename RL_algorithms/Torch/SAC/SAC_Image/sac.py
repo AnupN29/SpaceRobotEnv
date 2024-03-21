@@ -186,8 +186,7 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
         # from a uniform distribution for better exploration. Afterwards, 
         # use the learned policy. 
         if t > start_steps:
-            o = observation_i.reshape(1, 3, 680, 680)
-            o.to(device)
+            o = torch.tensor(observation_i.reshape(1, 3, 680, 680), device=device)
             action = get_action(o)
         else:
             action = env.action_space.sample()
