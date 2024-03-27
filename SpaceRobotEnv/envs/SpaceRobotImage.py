@@ -296,12 +296,12 @@ class SpacerobotEnv(RobotEnv):
 
         # get raw_image
         width, height = (64, 64)
-        image_raw, _ = self.render(mode="rgb_array", width=width, height=height)
+        image_raw, depth = self.render(mode="rgb_array", width=width, height=height)
         image = (2.0 / 255.0) * image_raw - 1.0
 
         # get high-resolution image
         width, height = (120, 120)
-        clearimage, depth = self.render(mode="rgb_array", width=width, height=height)
+        clearimage, _ = self.render(mode="rgb_array", width=width, height=height)
 
         base_pos = self.sim.data.qpos[:3].copy()
         base_att = self.sim.data.qpos[3:7].copy()

@@ -179,7 +179,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
                 o, r, d, _, _ = test_env.step(get_action((img_obs, depth_obs), True).reshape(6,))
 
                 img_obs = o["rawimage"].reshape(1, 3, 64, 64)
-                depth_obs = o["depth"].reshape(1, 1, 64, 64)
+                depth_obs = o["depth"].reshape(1, 1, 64, 64) 
                 depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
 
                 ep_ret += r
@@ -194,7 +194,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
     observation_i, ep_ret, ep_len = env.reset(), 0, 0
     
     img_obs = observation_i["rawimage"].reshape(3, 64, 64)
-    depth_obs = observation_i["depth"].reshape(1, 64, 64)
+    depth_obs = observation_i["depth"].reshape(1, 64, 64)  
     depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
 
     observation_i = [img_obs, depth_obs]
