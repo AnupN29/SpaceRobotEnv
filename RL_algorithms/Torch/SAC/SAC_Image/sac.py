@@ -171,7 +171,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
 
             img_obs = o["rawimage"].reshape(1, 3, 64, 64)
             depth_obs = o["depth"].reshape(1, 1, 64, 64)
-            depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
+            depth_obs = (depth_obs - torch.min(depth_obs)) / (torch.max(depth_obs) - torch.min(depth_obs)) * 255
 
             while not(d or (ep_len == max_ep_len)):
 
@@ -180,7 +180,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
 
                 img_obs = o["rawimage"].reshape(1, 3, 64, 64)
                 depth_obs = o["depth"].reshape(1, 1, 64, 64) 
-                depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
+                depth_obs = (depth_obs - torch.min(depth_obs)) / (torch.max(depth_obs) - torch.min(depth_obs)) * 255
 
                 ep_ret += r
                 ep_len += 1
@@ -195,7 +195,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
     
     img_obs = observation_i["rawimage"].reshape(3, 64, 64)
     depth_obs = observation_i["depth"].reshape(1, 64, 64)  
-    depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
+    depth_obs = (depth_obs - torch.min(depth_obs)) / (torch.max(depth_obs) - torch.min(depth_obs)) * 255
 
     observation_i = [img_obs, depth_obs]
     # Main loop: collect experience in env and update/log each epoch
@@ -207,7 +207,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
         if t > start_steps:
             img_obs = torch.tensor(observation_i[0].reshape(1, 3, 64, 64), device=device)
             depth_obs = torch.tensor(observation_i[1].reshape(1, 1, 64, 64), device=device)
-            depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
+            depth_obs = (depth_obs - torch.min(depth_obs)) / (torch.max(depth_obs) - torch.min(depth_obs)) * 255
 
             action = get_action([img_obs, depth_obs])
             action = action.reshape(6,)
