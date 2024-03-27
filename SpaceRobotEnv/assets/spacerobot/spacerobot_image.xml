@@ -24,7 +24,7 @@
         <light dir="0 0 -1" directional="true" name="light1" pos="0 -1 6" />
         <light dir="0 0 -1" directional="true" name="light2" pos="0 1 6" />
 
-        <site name="target0" pos="0 0 4.5" size="0.05 0.05 0.05" rgba="1 0 0 1" type="sphere"></site>
+        <site name="target0" pos="0 0 4.5" size="0.05 0.05 0.05" rgba="1 0 0 1" type="box" quat="0 0.3827 0 0.9239"></site>
 
         <body name="chasersat" pos="0 0 4">
             <freejoint name="chasersat:joint" />

@@ -9,16 +9,20 @@ class ReplayBuffer:
     """
 
     def __init__(self, obs_dim, act_dim, size):
-        self.obs_buf = np.zeros(core.combined_shape(size, obs_dim), dtype=np.float32)
-        self.obs2_buf = np.zeros(core.combined_shape(size, obs_dim), dtype=np.float32)
+        self.img_obs_buf = np.zeros(core.combined_shape(size, (3,obs_dim,obs_dim)), dtype=np.float32)
+        self.depth_obs_buf = np.zeros(core.combined_shape(size, (obs_dim,obs_dim)), dtype=np.float32)
+        self.img_obs2_buf = np.zeros(core.combined_shape(size, (3,obs_dim,obs_dim)), dtype=np.float32)
+        self.depth_obs2_buf = np.zeros(core.combined_shape(size, (obs_dim,obs_dim)), dtype=np.float32)
         self.act_buf = np.zeros(core.combined_shape(size, act_dim), dtype=np.float32)
         self.rew_buf = np.zeros(size, dtype=np.float32)
         self.done_buf = np.zeros(size, dtype=np.float32)
         self.ptr, self.size, self.max_size = 0, 0, size
 
     def store(self, obs, act, rew, next_obs, done):
-        self.obs_buf[self.ptr] = obs
-        self.obs2_buf[self.ptr] = next_obs
+        self.img_obs_buf[self.ptr] = obs[0]
+        self.depth_obs_buf[self.ptr] = obs[1]
+        self.img_obs2_buf[self.ptr] = next_obs[0]
+        self.depth_obs2_buf[self.ptr] = next_obs[1]
         self.act_buf[self.ptr] = act
         self.rew_buf[self.ptr] = rew
         self.done_buf[self.ptr] = done
@@ -27,8 +31,8 @@ class ReplayBuffer:
 
     def sample_batch(self, batch_size=32, device=device):
         idxs = np.random.randint(0, self.size, size=batch_size)
-        batch = dict(obs=self.obs_buf[idxs],
-                     obs2=self.obs2_buf[idxs],
+        batch = dict(obs=[self.img_obs_buf[idxs],self.depth_obs_buf[idxs]],
+                     obs2=[self.img_obs2_buf[idxs],self.depth_obs2_buf[idxs]],
                      act=self.act_buf[idxs],
                      rew=self.rew_buf[idxs],
                      done=self.done_buf[idxs])

@@ -10,13 +10,11 @@ from RL_algorithms.Torch.SAC.SAC_Image.memory import ReplayBuffer
 import itertools
 import SpaceRobotEnv
 from torch.utils.tensorboard import SummaryWriter
-def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=dict(), seed=0, 
+def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0, 
         steps_per_epoch=4000, epochs=100, replay_size=int(1e5), gamma=0.99, 
-        polyak=0.995, lr=1e-3, alpha=0.2, batch_size=16, start_steps=0, 
+        polyak=0.995, lr=1e-3, alpha=0.2, batch_size=100, start_steps=0, 
         update_after=50, update_every=50, num_test_episodes=3, max_ep_len=1000, 
-        logger_kwargs=dict(), save_freq=1, writer=None):
-    
-
+        logger_kwargs=dict(), save_freq=1, writer=None,output_channels=21):
     
     n_update_step = 0
     time_step = 0
@@ -24,6 +22,7 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
     score_history = []
     torch.manual_seed(seed)
     np.random.seed(seed)
+    img_size = 64
 
     env, test_env = env_fn(), env_fn()
     # observation_dim = env.observation_space['observation'].shape[0]
@@ -37,11 +36,17 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
     print(f"DEVICE : {device} \n")
 
     # Create actor-critic module and target networks
-    actor_critic_agent = actor_critic(env.action_space, **ac_kwargs).to(device)
+    image_encoder = core.ImageEncoderNetwork(output_channels=output_channels,device=device)
+
+    actor_critic_agent = actor_critic(env.action_space, image_encoder, device=device,**ac_kwargs).to(device)
+
     if model_path:
         actor_critic_agent.load_state_dict(torch.load(model_path))
         print(f"MODEL LOADED from {model_path}")
         actor_critic_agent.train()
+        actor_critic_agent.to(device)
+
+
     actor_critic_agent_target = deepcopy(actor_critic_agent).to(device)
 
     # Freeze target networks with respect to optimizers (only update via polyak averaging)
@@ -52,14 +57,12 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
     q_params = itertools.chain(actor_critic_agent.q1.parameters(), actor_critic_agent.q2.parameters())
 
     # Experience buffer
-    replay_buffer = ReplayBuffer(obs_dim = (3, 680, 680),
+    replay_buffer = ReplayBuffer(obs_dim = img_size,
                                  act_dim = action_dim, 
                                  size=replay_size)
 
     # Count variables (protip: try to get a feel for how different size networks behave!)
-    var_counts = tuple(core.count_vars(module) for module in [actor_critic_agent.pi, 
-                                                            actor_critic_agent.q1, 
-                                                            actor_critic_agent.q2])
+    # var_counts = tuple(core.count_vars(module) for module in [actor_critic_agent.pi,actor_critic_agent.q1, actor_critic_agent.q2])
     # logger.log('\nNumber of parameters: \t pi: %d, \t q1: %d, \t q2: %d\n'%var_counts)
 
     # Set up function for computing SAC Q-losses
@@ -155,18 +158,30 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
                 p_targ.data.add_((1 - polyak) * p.data)
 
     def get_action(observation_, deterministic=False):
-        return actor_critic_agent.act(torch.as_tensor(observation_, dtype=torch.float32), 
+        return actor_critic_agent.act(torch.as_tensor(observation_, dtype=torch.float32, device=device), 
                       deterministic)
 
     def test_agent(time_step):
+
         print("testing model")
+
         for j in range(num_test_episodes):
+
             o, d, ep_ret, ep_len = test_env.reset(), False, 0, 0
-            o = o["image"].reshape(1, 3, 680, 680)
+
+            img_obs = o["rawimage"].reshape(1, 3, 64, 64)
+            depth_obs = o["depth"].reshape(1, 1, 64, 64)
+            depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
+
             while not(d or (ep_len == max_ep_len)):
+
                 # Take deterministic actions at test time 
-                o, r, d, _, _ = test_env.step(get_action(o, True).reshape(6,))
-                o = o["image"].reshape(1, 3, 680, 680)
+                o, r, d, _, _ = test_env.step(get_action((img_obs, depth_obs), True).reshape(6,))
+
+                img_obs = o["rawimage"].reshape(1, 3, 64, 64)
+                depth_obs = o["depth"].reshape(1, 1, 64, 64)
+                depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
+
                 ep_ret += r
                 ep_len += 1
             # logger.store(TestEpRet=ep_ret, TestEpLen=ep_len)
@@ -177,8 +192,12 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
     total_steps = steps_per_epoch * epochs
     start_time = time.time()
     observation_i, ep_ret, ep_len = env.reset(), 0, 0
-    observation_i = observation_i["image"].reshape(3, 680, 680)
+    
+    img_obs = observation_i["rawimage"].reshape(3, 64, 64)
+    depth_obs = observation_i["depth"].reshape(1, 64, 64)
+    depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
 
+    observation_i = [img_obs, depth_obs]
     # Main loop: collect experience in env and update/log each epoch
     for t in tqdm(range(total_steps)):
         
@@ -186,8 +205,11 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
         # from a uniform distribution for better exploration. Afterwards, 
         # use the learned policy. 
         if t > start_steps:
-            o = torch.tensor(observation_i.reshape(1, 3, 680, 680), device=device)
-            action = get_action(o)
+            img_obs = torch.tensor(observation_i[0].reshape(1, 3, 64, 64), device=device)
+            depth_obs = torch.tensor(observation_i[1].reshape(1, 1, 64, 64), device=device)
+            depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
+
+            action = get_action([img_obs, depth_obs])
             action = action.reshape(6,)
 
         else:
@@ -195,7 +217,12 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
 
         # Step the env
         observation_2, reward, done, _, _ = env.step(action)
-        observation_2 = observation_2["image"].reshape(3, 680, 680)
+        img_obs = observation_2["rawimage"].reshape(3, 64, 64)
+        depth_obs = observation_2["depth"].reshape(1, 64, 64)
+        depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
+
+        observation_2 = [img_obs, depth_obs]
+
         ep_ret += reward
         ep_len += 1
 
@@ -213,14 +240,18 @@ def sac( env_fn, model_path=None, actor_critic=core.CNNActorCritic, ac_kwargs=di
 
         # End of trajectory handling
         if done or (ep_len == max_ep_len):
+
             # logger.store(EpRet=ep_ret, EpLen=ep_len)
             score_history.append(ep_ret)
             avg_score = np.mean(score_history[-100:])
             writer.add_scalar("Avg Reward", avg_score, n_played_games )
-            print( 'score %.1f', ep_ret, 'avg_score %.1f' ,avg_score,'num_games', n_played_games, )
+            print( 'score %.1f', ep_ret, 'avg_score %.1f' , avg_score,'num_games', n_played_games)
             n_played_games += 1
             observation_i, ep_ret, ep_len = env.reset(), 0, 0
-            observation_i = observation_i["image"].reshape(3, 680, 680)
+            img_obs = observation_i["rawimage"].reshape(3, 64, 64)
+            depth_obs = observation_i["depth"].reshape(1, 64, 64)
+
+            observation_i = [img_obs, depth_obs]
 
         # Update handling
         if t >= update_after and t % update_every == 0:
@@ -265,7 +296,7 @@ if __name__ == '__main__':
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
-    sac(lambda : gym.make(args.env), actor_critic=core.CNNActorCritic,
+    sac(lambda : gym.make(args.env), actor_critic=core.MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), 
         gamma=args.gamma, seed=args.seed, epochs=args.epochs,
         logger_kwargs=logger_kwargs,writer=writer,replay_size=args.replay_size,batch_size=args.batch_size)

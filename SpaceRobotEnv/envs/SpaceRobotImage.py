@@ -141,6 +141,8 @@ class RobotEnv(gym_robotics.GoalEnv):
             datargb, datadepth = self._get_viewer(mode).read_pixels(
                 width, height, depth=True
             )
+            # print(f"IMG Shape : {datargb.shape}")
+            # print(f"Depth Shape : {datadepth.shape}")
             # original image is upside-down, so flip it
             return datargb[::-1, :, :], datadepth[::-1]
         elif mode == "human":
@@ -162,7 +164,7 @@ class RobotEnv(gym_robotics.GoalEnv):
                 
                 # latest modification
                 # cam_pos = np.array([1, 0.5, 5, 0.3, 0, -90])
-                cam_pos = np.array([1, 0.5, 5, 3, 0, -90])
+                cam_pos = np.array([1, 0.5, 5, 1, 0, -90])
                 for i in range(3):
                     self.viewer.cam.lookat[i] = cam_pos[i]
                 self.viewer.cam.distance = cam_pos[3]
@@ -294,12 +296,12 @@ class SpacerobotEnv(RobotEnv):
 
         # get raw_image
         width, height = (64, 64)
-        image_raw, depth = self.render(mode="rgb_array", width=width, height=height)
+        image_raw, _ = self.render(mode="rgb_array", width=width, height=height)
         image = (2.0 / 255.0) * image_raw - 1.0
 
         # get high-resolution image
-        width, height = (680, 680)
-        clearimage, _ = self.render(mode="rgb_array", width=width, height=height)
+        width, height = (120, 120)
+        clearimage, depth = self.render(mode="rgb_array", width=width, height=height)
 
         base_pos = self.sim.data.qpos[:3].copy()
         base_att = self.sim.data.qpos[3:7].copy()
