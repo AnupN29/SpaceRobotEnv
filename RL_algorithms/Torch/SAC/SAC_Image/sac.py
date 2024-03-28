@@ -168,19 +168,34 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
         for j in range(num_test_episodes):
 
             o, d, ep_ret, ep_len = test_env.reset(), False, 0, 0
+            
 
-            img_obs = o["rawimage"].reshape(1, 3, 64, 64)
-            depth_obs = o["depth"].reshape(1, 1, 64, 64)
-            depth_obs = (depth_obs - torch.min(depth_obs)) / (torch.max(depth_obs) - torch.min(depth_obs)) * 255
+            image_tensor = torch.tensor(o["rawimage"].transpose((2, 0, 1)), dtype=torch.uint8)
+            image_tensor2 = image_tensor.clone().to(dtype=torch.float32)
+            image_tensor2 = image_tensor2.reshape(1, 3, 64, 64)
+
+            depth = o["depth"].astype(np.float32)
+            depth = (depth - np.min(depth)) / (np.max(depth) - np.min(depth)) * 255
+
+            depth_tensor = torch.tensor(depth, dtype=torch.uint8)
+            depth_tensor2 = depth_tensor.clone().to(dtype=torch.float32)
+            depth_tensor2 = depth_tensor2.reshape(1, 1, 64, 64)
 
             while not(d or (ep_len == max_ep_len)):
 
                 # Take deterministic actions at test time 
-                o, r, d, _, _ = test_env.step(get_action((img_obs, depth_obs), True).reshape(6,))
+                o, r, d, _, _ = test_env.step(get_action([image_tensor2.to(device), depth_tensor2.to(device)], True).reshape(6,))
 
-                img_obs = o["rawimage"].reshape(1, 3, 64, 64)
-                depth_obs = o["depth"].reshape(1, 1, 64, 64) 
-                depth_obs = (depth_obs - torch.min(depth_obs)) / (torch.max(depth_obs) - torch.min(depth_obs)) * 255
+                image_tensor = torch.tensor(o["rawimage"].transpose((2, 0, 1)), dtype=torch.uint8)
+                image_tensor2 = image_tensor.clone().to(dtype=torch.float32)
+                image_tensor2 = image_tensor2.reshape(1, 3, 64, 64)
+
+                depth = o["depth"].astype(np.float32)
+                depth = (depth - np.min(depth)) / (np.max(depth) - np.min(depth)) * 255
+
+                depth_tensor = torch.tensor(depth, dtype=torch.uint8)
+                depth_tensor2 = depth_tensor.clone().to(dtype=torch.float32)
+                depth_tensor2 = depth_tensor2.reshape(1, 1, 64, 64)
 
                 ep_ret += r
                 ep_len += 1
@@ -192,12 +207,18 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
     total_steps = steps_per_epoch * epochs
     start_time = time.time()
     observation_i, ep_ret, ep_len = env.reset(), 0, 0
-    
-    img_obs = observation_i["rawimage"].reshape(3, 64, 64)
-    depth_obs = observation_i["depth"].reshape(1, 64, 64)  
-    depth_obs = (depth_obs - torch.min(depth_obs)) / (torch.max(depth_obs) - torch.min(depth_obs)) * 255
 
-    observation_i = [img_obs, depth_obs]
+    image_tensor = torch.tensor(observation_i["rawimage"].transpose((2, 0, 1)), dtype=torch.uint8)
+    image_tensor2 = image_tensor.clone().to(dtype=torch.float32)
+
+    depth = observation_i["depth"].astype(np.float32)
+    depth = (depth - np.min(depth)) / (np.max(depth) - np.min(depth)) * 255
+
+    depth_tensor = torch.tensor(depth, dtype=torch.uint8)
+    depth_tensor2 = depth_tensor.clone().to(dtype=torch.float32)
+    
+
+    observation_i = [image_tensor2.to(device), depth_tensor2.to(device)]
     # Main loop: collect experience in env and update/log each epoch
     for t in tqdm(range(total_steps)):
         
@@ -205,9 +226,9 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
         # from a uniform distribution for better exploration. Afterwards, 
         # use the learned policy. 
         if t > start_steps:
-            img_obs = torch.tensor(observation_i[0].reshape(1, 3, 64, 64), device=device)
-            depth_obs = torch.tensor(observation_i[1].reshape(1, 1, 64, 64), device=device)
-            depth_obs = (depth_obs - torch.min(depth_obs)) / (torch.max(depth_obs) - torch.min(depth_obs)) * 255
+            img_obs = observation_i[0].reshape(1, 3, 64, 64).to(device=device)
+            depth_obs = observation_i[1].reshape(1, 1, 64, 64).to(device=device)
+            
 
             action = get_action([img_obs, depth_obs])
             action = action.reshape(6,)
@@ -217,11 +238,16 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
 
         # Step the env
         observation_2, reward, done, _, _ = env.step(action)
-        img_obs = observation_2["rawimage"].reshape(3, 64, 64)
-        depth_obs = observation_2["depth"].reshape(1, 64, 64)
-        depth_obs = (depth_obs - np.min(depth_obs)) / (np.max(depth_obs) - np.min(depth_obs)) * 255
+        image_tensor = torch.tensor(observation_2["rawimage"].transpose((2, 0, 1)), dtype=torch.uint8)
+        image_tensor2 = image_tensor.clone().to(dtype=torch.float32)
 
-        observation_2 = [img_obs, depth_obs]
+        depth = observation_2["depth"].astype(np.float32)
+        depth = (depth - np.min(depth)) / (np.max(depth) - np.min(depth)) * 255
+
+        depth_tensor = torch.tensor(depth, dtype=torch.uint8)
+        depth_tensor2 = depth_tensor.clone().to(dtype=torch.float32)
+
+        observation_2 = [image_tensor2.to(device), depth_tensor2.to(device)]
 
         ep_ret += reward
         ep_len += 1
@@ -248,10 +274,17 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
             print( 'score %.1f', ep_ret, 'avg_score %.1f' , avg_score,'num_games', n_played_games)
             n_played_games += 1
             observation_i, ep_ret, ep_len = env.reset(), 0, 0
-            img_obs = observation_i["rawimage"].reshape(3, 64, 64)
-            depth_obs = observation_i["depth"].reshape(1, 64, 64)
+            image_tensor = torch.tensor(observation_i["rawimage"].transpose((2, 0, 1)), dtype=torch.uint8)
+            image_tensor2 = image_tensor.clone().to(dtype=torch.float32)
 
-            observation_i = [img_obs, depth_obs]
+            depth = observation_i["depth"].astype(np.float32)
+            depth = (depth - np.min(depth)) / (np.max(depth) - np.min(depth)) * 255
+
+            depth_tensor = torch.tensor(depth, dtype=torch.uint8)
+            depth_tensor2 = depth_tensor.clone().to(dtype=torch.float32)
+
+
+            observation_i = [image_tensor2.to(device), depth_tensor2.to(device)]
 
         # Update handling
         if t >= update_after and t % update_every == 0:
