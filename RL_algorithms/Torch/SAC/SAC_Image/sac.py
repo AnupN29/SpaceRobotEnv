@@ -45,6 +45,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
         print(f"MODEL LOADED from {model_path}")
         actor_critic_agent.train()
         actor_critic_agent.to(device)
+        start_steps=0
 
 
     actor_critic_agent_target = deepcopy(actor_critic_agent).to(device)
@@ -321,6 +322,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=100)
     parser.add_argument('--exp_name', type=str, default='sac_cnn')
     parser.add_argument('--save_path', type=str, default='')
+    parser.add_argument('--model_path', type=str, default=None)
 
     args = parser.parse_args()
 
@@ -336,6 +338,6 @@ if __name__ == '__main__':
     )
     sac(lambda : gym.make(args.env), actor_critic=core.MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), 
-        gamma=args.gamma, seed=args.seed, epochs=args.epochs,
+        gamma=args.gamma, seed=args.seed, epochs=args.epochs, model_path=args.model_path,
         logger_kwargs=logger_kwargs,writer=writer,replay_size=args.replay_size,batch_size=args.batch_size,save_path=args.save_path)
     
