@@ -41,7 +41,10 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
     actor_critic_agent = actor_critic(env.action_space, image_encoder, device=device,**ac_kwargs).to(device)
 
     if model_path:
-        actor_critic_agent.load_state_dict(torch.load(model_path))
+        if torch.cuda.is_available():
+            actor_critic_agent.load_state_dict(torch.load(model_path))
+        else:
+            actor_critic_agent.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         print(f"MODEL LOADED from {model_path}")
         actor_critic_agent.train()
         actor_critic_agent.to(device)
