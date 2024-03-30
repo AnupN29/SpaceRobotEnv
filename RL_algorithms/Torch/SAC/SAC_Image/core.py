@@ -53,7 +53,13 @@ class ImageEncoderNetwork(nn.Module):
             nn.ReLU()
         ).to(device)
         # Define fully connected layer to combine features
-        self.fc_combined = nn.Linear(64 * 2 * 2, 64).to(device)
+        self.fc_combined = nn.Sequential(
+            nn.Linear(8192, 1024),
+            nn.ReLU(),
+            nn.Linear(1024,256),
+            nn.ReLU(),
+            nn.Linear(256,64),
+        ).to(device)
         self.fc_output = nn.Linear(64, out_features=output_channels).to(device)
         
     def forward(self, rgb_image, depth_image):
@@ -95,15 +101,17 @@ LOG_STD_MIN = -20
 
 class SquashedGaussianMLPActor(nn.Module):
 
-    def __init__(self, act_dim, image_encoder, hidden_sizes, act_limit, device=device):
+    def __init__(self, act_dim, image_encoder, hidden_sizes, activation, act_limit, device=device):
         super().__init__()
         self.image_encoder = image_encoder
+        self.net = mlp([21] + list(hidden_sizes), activation, activation).to(device)
         self.mu_layer = nn.Linear(hidden_sizes[-1], act_dim).to(device)
         self.log_std_layer = nn.Linear(hidden_sizes[-1], act_dim).to(device)
         self.act_limit = act_limit
 
     def forward(self, obs, deterministic=False, with_logprob=True):
-        net_out = self.image_encoder(obs[0], obs[1])  # Pass observation through the image encoder
+        cnn_net_out = self.image_encoder(obs[0], obs[1])  # Pass observation through the image encoder
+        net_out = self.net(cnn_net_out)
         mu = self.mu_layer(net_out)
         log_std = self.log_std_layer(net_out)
         log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
@@ -120,7 +128,8 @@ class SquashedGaussianMLPActor(nn.Module):
         if with_logprob:
             # Compute logprob from Gaussian, and then apply correction for Tanh squashing.
             logp_pi = pi_distribution.log_prob(pi_action).sum(axis=-1)
-            logp_pi -= (2*(torch.log(2) - pi_action - F.softplus(-2*pi_action))).sum(axis=1)
+            # logp_pi -= (2*(torch.log(2) - pi_action - F.softplus(-2*pi_action))).sum(axis=1)
+            logp_pi -= (2*(np.log(2) - pi_action - F.softplus(-2*pi_action))).sum(axis=1)
         else:
             logp_pi = None
 
@@ -135,7 +144,7 @@ class MLPQFunction(nn.Module):
     def __init__(self, act_dim, image_encoder, hidden_sizes, activation, device=device):
         super().__init__()
         self.image_encoder = image_encoder
-        self.q = mlp([hidden_sizes[-1] + act_dim] + list(hidden_sizes) + [1], activation).to(device)
+        self.q = mlp([21 + act_dim] + list(hidden_sizes) + [1], activation).to(device)
 
     def forward(self, obs, act):
         net_out = self.image_encoder(obs[0], obs[1])  # Pass observation through the image encoder
@@ -152,7 +161,7 @@ class MLPActorCritic(nn.Module):
         act_limit = action_space.high[0]
 
         # build policy and value functions
-        self.pi = SquashedGaussianMLPActor(act_dim, image_encoder, hidden_sizes, act_limit, device)
+        self.pi = SquashedGaussianMLPActor(act_dim, image_encoder, hidden_sizes, activation,act_limit, device)
         self.q1 = MLPQFunction(act_dim, image_encoder, hidden_sizes, activation, device)
         self.q2 = MLPQFunction(act_dim, image_encoder, hidden_sizes, activation, device)
 

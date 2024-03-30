@@ -12,8 +12,8 @@ import SpaceRobotEnv
 from torch.utils.tensorboard import SummaryWriter
 def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0, 
         steps_per_epoch=4000, epochs=100, replay_size=int(1e5), gamma=0.99, 
-        polyak=0.995, lr=1e-3, alpha=0.2, batch_size=100, start_steps=0, 
-        update_after=50, update_every=50, num_test_episodes=3, max_ep_len=1000, 
+        polyak=0.995, lr=1e-3, alpha=0.2, batch_size=100, start_steps=10000, 
+        update_after=1000, update_every=50, num_test_episodes=5, max_ep_len=1000, 
         logger_kwargs=dict(), save_freq=1, writer=None,output_channels=21):
     
     n_update_step = 0
@@ -67,7 +67,10 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
 
     # Set up function for computing SAC Q-losses
     def compute_loss_q(data):
-        observation_, action_, reward_, new_observation_, done_ = data['obs'], data['act'], data['rew'], data['obs2'], data['done']
+        img1, depth1, action_, reward_, img2, depth2, done_ = data['img_obs'], data['depth_obs'], data['act'], data['rew'], data['img_obs2'], data['depth_obs2'], data['done']
+        observation_ = [img1, depth1]
+        new_observation_ = [img2, depth2]
+        # print("Shape : ", observation_[1].shape)
 
         q_value_1 = actor_critic_agent.q1(observation_, action_)
         q_value_2 = actor_critic_agent.q2(observation_, action_)
@@ -96,8 +99,8 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
 
     # Set up function for computing SAC pi loss
     def compute_loss_pi(data):
-        observation_ = data['obs']
-
+        img1, depth1 = data['img_obs'], data['depth_obs']
+        observation_ = [img1, depth1]
         pi, logp_pi = actor_critic_agent.pi(observation_)
         q1_pi = actor_critic_agent.q1(observation_, pi)
         q2_pi = actor_critic_agent.q2(observation_, pi)
@@ -158,8 +161,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
                 p_targ.data.add_((1 - polyak) * p.data)
 
     def get_action(observation_, deterministic=False):
-        return actor_critic_agent.act(torch.as_tensor(observation_, dtype=torch.float32, device=device), 
-                      deterministic)
+        return actor_critic_agent.act(observation_, deterministic)
 
     def test_agent(time_step):
 
@@ -216,6 +218,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
 
     depth_tensor = torch.tensor(depth, dtype=torch.uint8)
     depth_tensor2 = depth_tensor.clone().to(dtype=torch.float32)
+    depth_tensor2 = depth_tensor2.reshape(1, 64, 64)
     
 
     observation_i = [image_tensor2.to(device), depth_tensor2.to(device)]
@@ -246,7 +249,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
 
         depth_tensor = torch.tensor(depth, dtype=torch.uint8)
         depth_tensor2 = depth_tensor.clone().to(dtype=torch.float32)
-
+        depth_tensor2 = depth_tensor2.reshape(1, 64, 64)
         observation_2 = [image_tensor2.to(device), depth_tensor2.to(device)]
 
         ep_ret += reward
@@ -256,7 +259,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
         # horizon (that is, when it's an artificial terminal signal
         # that isn't based on the agent's state)
         done = False if ep_len==max_ep_len else done
-
+        # print("Shape : ", observation_i[1].shape)
         # Store experience to replay buffer
         replay_buffer.store(observation_i, action, reward, observation_2, done)
 
@@ -282,7 +285,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
 
             depth_tensor = torch.tensor(depth, dtype=torch.uint8)
             depth_tensor2 = depth_tensor.clone().to(dtype=torch.float32)
-
+            depth_tensor2 = depth_tensor2.reshape(1, 64, 64)
 
             observation_i = [image_tensor2.to(device), depth_tensor2.to(device)]
 
@@ -314,8 +317,8 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--replay_size', type=int, default=16)
-    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--replay_size', type=int, default=int(1e5))
+    parser.add_argument('--batch_size', type=int, default=100)
     parser.add_argument('--exp_name', type=str, default='sac_20')
     args = parser.parse_args()
 
