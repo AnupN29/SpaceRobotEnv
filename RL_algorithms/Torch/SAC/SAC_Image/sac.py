@@ -14,7 +14,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
         steps_per_epoch=4000, epochs=100, replay_size=int(1e5), gamma=0.99, 
         polyak=0.995, lr=1e-3, alpha=0.2, batch_size=100, start_steps=10000, 
         update_after=1000, update_every=50, num_test_episodes=5, max_ep_len=1000, 
-        logger_kwargs=dict(), save_freq=1, writer=None,output_channels=21):
+        logger_kwargs=dict(), save_freq=1, writer=None,output_channels=21, save_path=""):
     
     n_update_step = 0
     time_step = 0
@@ -302,7 +302,7 @@ def sac( env_fn, model_path=None, actor_critic=core.MLPActorCritic, ac_kwargs=di
 
             # Save model
             if (epoch % save_freq == 0) or (epoch == epochs):
-                torch.save(actor_critic_agent.state_dict(), f"model_epoch_{epoch}.pt")
+                torch.save(actor_critic_agent.state_dict(), f"{save_path}model_epoch_{epoch}.pt")
 
             # Test the performance of the deterministic version of the agent.
             time_step +=1
@@ -319,7 +319,9 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--replay_size', type=int, default=int(1e5))
     parser.add_argument('--batch_size', type=int, default=100)
-    parser.add_argument('--exp_name', type=str, default='sac_20')
+    parser.add_argument('--exp_name', type=str, default='sac_cnn')
+    parser.add_argument('--save_path', type=str, default='')
+
     args = parser.parse_args()
 
     # from spinup.utils.run_utils import setup_logger_kwargs
@@ -327,7 +329,7 @@ if __name__ == '__main__':
     logger_kwargs = None
 
     torch.set_num_threads(torch.get_num_threads())
-    writer = SummaryWriter("logs")
+    writer = SummaryWriter(f"{args.save_path}logs")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
@@ -335,5 +337,5 @@ if __name__ == '__main__':
     sac(lambda : gym.make(args.env), actor_critic=core.MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid]*args.l), 
         gamma=args.gamma, seed=args.seed, epochs=args.epochs,
-        logger_kwargs=logger_kwargs,writer=writer,replay_size=args.replay_size,batch_size=args.batch_size)
+        logger_kwargs=logger_kwargs,writer=writer,replay_size=args.replay_size,batch_size=args.batch_size,save_path=args.save_path)
     
