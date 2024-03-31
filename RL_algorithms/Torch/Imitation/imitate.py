@@ -38,7 +38,7 @@ def collect_data(env, expert_model, replay_buffer):
             depth_tensor2 = depth_tensor.clone().to(dtype=torch.float32)
             depth_tensor2 = depth_tensor2.reshape(1, 64, 64)
 
-            expert_actions = expert_model.act(obs=torch.tensor(observation["observation"], dtype=torch.float32)) 
+            expert_actions = expert_model.act(obs=torch.tensor(observation["observation"], dtype=torch.float32, device=device)) 
             replay_buffer.store([image_tensor2, depth_tensor2], expert_actions)
             
             observation, _, _, _, _ = env.step(expert_actions)
