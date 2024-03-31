@@ -97,5 +97,5 @@ def imitate(expert_model_path, device=device, output_channels=6, seed=0, replay_
 
 
 
-
+imitate(expert_model_path="/content/sac_30.pt", device=device, output_channels=6, seed=0, replay_size=int(1e5), epochs=100, batch_size=128, writer=writer)
 
