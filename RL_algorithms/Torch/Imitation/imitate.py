@@ -71,10 +71,14 @@ def imitate(expert_model_path, device=device, output_channels=6, seed=0, replay_
     action_dim = env.action_space.shape[0]
 
     replay_buffer = ReplayBuffer(obs_dim = img_size, act_dim = action_dim, size=replay_size)
+    print("\n Collecting Episodes \n")
     collect_data(env, expert_agent, replay_buffer)
 
     criterion = nn.MSELoss()
     optimizer = Adam(imitate_agent.parameters(), lr=0.001)
+
+    print("\n Starting Training \n")
+
 
     for epoch in tqdm(range(epochs)):
 
@@ -82,6 +86,8 @@ def imitate(expert_model_path, device=device, output_channels=6, seed=0, replay_
         img_obs, depth_obs, expert_actions = batch['img_obs'], batch['depth_obs'], batch['expert_act']
     
         actions = imitate_agent(img_obs, depth_obs)
+
+        actions.to(device)
 
         optimizer.zero_grad()
         # Compute loss between CNN actions and expert actions
