@@ -15,7 +15,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 import os
 import torch
 from torch.utils.data import Dataset, DataLoader
-import cv2
 
 class ImitationDataset(Dataset):
     def __init__(self, root_dir):
@@ -112,7 +111,6 @@ def imitate( writer, data_path, save_path, model_path, device=device, output_cha
 
 
     for epoch in range(epochs):
-        torch.save(imitate_agent.state_dict(), f"{save_path}model{epoch}.pt")
 
         for batch in tqdm(dataloader, desc=f"Epoch {epoch+1}/{epochs}"):
 
